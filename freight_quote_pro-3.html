@@ -2634,7 +2634,7 @@ function fetchWallaceLiveRate() {
 
   var xhr = new XMLHttpRequest();
   // 1. ACTUALLY FIXED: Correct API endpoint URL to return valid JSON numbers
-  xhr.open('GET', 'https://frankfurter.dev', true);
+  xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/usd/aud', true);
   
   xhr.onload = function() {
     try {
