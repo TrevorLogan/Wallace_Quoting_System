@@ -2134,7 +2134,7 @@ function newQuote() {
   document.getElementById('f-dest').value = '';
   document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('f-vd').value   = '60';
-  document.getElementById('f-ex').value   = '0.6556';
+document.getElementById('f-ex').value = rc.exrate || parseFloat(document.getElementById('rc-exrate')?.value) || 0.7121;
   document.getElementById('qm-name').value = '';
 
   // Clear all charge lists
@@ -2327,7 +2327,7 @@ var RC_DEFAULTS = {
     {name:"Regional Victoria", cartage:195.00, fuel_pct:25, booking:25.00, tolls:30.00},
     {name:"Regional NSW",    cartage:220.00, fuel_pct:25, booking:25.00, tolls:35.00}
   ],
-  exrate:   0.6556,
+exrate: parseFloat(document.getElementById('f-ex')?.value) || 0.7121,
   validity: 60,
   coloader: "GCS",
   fuel_pct: 25
@@ -2407,7 +2407,7 @@ function captureRateCard() {
     });
   });
 
-  rc.exrate   = parseFloat(document.getElementById('rc-exrate').value)   || 0.6556;
+document.getElementById('f-ex').value = rc.exrate || parseFloat(document.getElementById('rc-exrate')?.value) || 0.7121;
   rc.validity = parseFloat(document.getElementById('rc-validity').value) || 60;
   rc.coloader = document.getElementById('rc-coloader').value || 'GCS';
   rc.fuel_pct = parseFloat(document.getElementById('rc-fuel').value)     || 25;
@@ -2436,7 +2436,7 @@ function renderRateCard(rc) {
 
   (rc.destinations || []).forEach(function(d) { addRCDestRow(d); });
 
-  document.getElementById('rc-exrate').value   = rc.exrate   || 0.6556;
+document.getElementById('f-ex').value = rc.exrate || parseFloat(document.getElementById('rc-exrate')?.value) || 0.7121;
   document.getElementById('rc-validity').value = rc.validity || 60;
   document.getElementById('rc-coloader').value = rc.coloader || 'GCS';
   document.getElementById('rc-fuel').value     = rc.fuel_pct || 25;
@@ -2621,7 +2621,7 @@ function applyRateCardToForm(rc) {
   applySection('cl-local', 'dl-local', rc.local);
   applySection('cl-cust',  'dl-cust',  rc.cust);
 
-  document.getElementById('f-ex').value  = rc.exrate   || 0.6556;
+rc.exrate = parseFloat(document.getElementById('rc-exrate').value) || parseFloat(document.getElementById('f-ex').value) || 0.7121;
   document.getElementById('f-vd').value  = rc.validity || 60;
   document.getElementById('f-co').value  = rc.coloader || 'GCS';
 }
@@ -2891,7 +2891,8 @@ function sumList(listId) {
 // ═══════════════════════════════════════
 function recalc() {
   updateRT();
-  var ex = parseFloat(document.getElementById('f-ex').value) || 0.6556;
+// Remove your old hardcoded fallback line and swap it to this:
+var ex = parseFloat(document.getElementById('f-ex').value) || parseFloat(document.getElementById('rc-exrate').value) || window.activeLiveRateValue || 0.7121;
   var iUSD = sumList('cl-intl');
   var grand = (iUSD / ex) + sumList('cl-local') + sumList('cl-cust') + sumList('cl-del');
   var el = document.getElementById('live-total');
@@ -2911,7 +2912,8 @@ function setText(id, t) { var e = document.getElementById(id); if (e) e.textCont
 
 function buildPreview() {
   recalc();
-  var ex   = parseFloat(val('f-ex')) || 0.6556;
+// Remove your old hardcoded fallback line and swap it to this:
+var ex = parseFloat(document.getElementById('f-ex').value) || parseFloat(document.getElementById('rc-exrate').value) || window.activeLiveRateValue || 0.7121;
   var cn   = val('f-cn') || '—';
   var cp   = val('f-cp');
   var a1   = val('f-a1'), cy = val('f-cy'), st = val('f-st');
