@@ -2637,7 +2637,7 @@ function fetchWallaceLiveRate() {
 
   var xhr = new XMLHttpRequest();
   // Hits the correct live v2 data stream for AUD to USD trajectory
-  xhr.open('GET', 'https://frankfurter.dev', true);
+  xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/aud/usd', true);
   
   xhr.onload = function() {
     try {
