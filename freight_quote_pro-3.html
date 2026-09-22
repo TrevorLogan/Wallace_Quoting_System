@@ -2625,10 +2625,8 @@ function applyRateCardToForm(rc) {
   document.getElementById('f-co').value  = rc.coloader || 'GCS';
 }
 // ═══════════════════════════════════════
-// LIVE EXCHANGE RATE — Wallace International Sovereign API Lock
+// LIVE EXCHANGE RATE — Wallace International Defaulting Engine (AUD to USD)
 // ═══════════════════════════════════════
-
-var ultimateApiRate = null;
 
 function fetchWallaceLiveRate() {
   var statusEl = document.getElementById('ex-rate-status');
@@ -2636,9 +2634,7 @@ function fetchWallaceLiveRate() {
   var rcEl     = document.getElementById('rc-exrate'); // Rate Card default input
 
   var xhr = new XMLHttpRequest();
-  // Hits the correct live v2 data stream for AUD to USD trajectory
-  xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/aud/usd', true);
-  
+  xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/aud/usd', true);   
   xhr.onload = function() {
     try {
       if (xhr.status === 200) {
@@ -2646,58 +2642,51 @@ function fetchWallaceLiveRate() {
         var rate = res.rate; 
         
         if (rate) {
-          // 1. Capture clean 4-decimal live rate from the endpoint payload
-          ultimateApiRate = Math.round(rate * 10000) / 10000;
+          // 1. Cleanly round the live API rate to 4 decimal places
+          var apiDefaultValue = Math.round(rate * 10000) / 10000;
           
-          // 2. Lock the native DOM input elements completely
-          [exEl, rcEl].forEach(function(el) {
-            if (!el) return;
-            
-            // Wipe out default properties so background scripts cannot change them
-            Object.defineProperty(el, 'value', {
-              get: function() { return ultimateApiRate; },
-              set: function(val) { 
-                // Silently discards background calculations trying to insert 0.6556
-              },
-              configurable: true
-            });
-            
-            // Set visual UI fields immediately
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-          });
+          // 2. Set the values to the inputs so they default to the API rate
+          if (exEl) exEl.value = apiDefaultValue;
+          if (rcEl) rcEl.value = apiDefaultValue;
 
-          // 3. Render success state message on layout dashboard view
+          // 3. Update the visual message container to green status
           if (statusEl) {
             var today = new Date().toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
             statusEl.style.color = 'var(--olive)';
-            statusEl.innerHTML = '✓ Live API Rate Locked: ' + ultimateApiRate + ' &nbsp;<span style="color:var(--tl);font-size:0.58rem;">(System Overwrite Defeated)</span>';
+            statusEl.innerHTML = '✓ Defaulted to Live API rate as of ' + today + ' &nbsp;<span style="color:var(--tl);font-size:0.58rem;">(editable — override if needed)</span>';
           }
           
-          // 4. Force calculation layout matrix update
+          // 4. Safely trigger the rest of your form calculations
           if (typeof recalc === 'function') {
             recalc();
           }
+        } else {
+          handleWallaceFallback(statusEl);
         }
+      } else {
+        handleWallaceFallback(statusEl);
       }
     } catch(e) {
-      console.error("Lock Engine Error Flag:", e);
+      console.error("JSON Parsing Error:", e);
+      handleWallaceFallback(statusEl);
     }
+  };
+  
+  xhr.onerror = function() {
+    handleWallaceFallback(statusEl);
   };
   
   xhr.send();
 }
 
-// Intercept calculations to verify stale constants don't break formulas
-function safeCheckRateCardOverride() {
-  if (ultimateApiRate !== null) {
-    var exEl = document.getElementById('f-ex');
-    var rcEl = document.getElementById('rc-exrate');
-    if (exEl) exEl.value = ultimateApiRate;
-    if (rcEl) rcEl.value = ultimateApiRate;
+function handleWallaceFallback(element) {
+  if (element) {
+    element.style.color = 'var(--tl)';
+    element.textContent = '⚠ Could not fetch live rate — using saved rate. Check connection.';
   }
 }
 
-// Initialize layout processing routine
+// Seamlessly fire the interface engine when the DOM layout finishes loading
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', fetchWallaceLiveRate);
 } else {
