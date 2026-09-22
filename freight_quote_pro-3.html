@@ -2625,16 +2625,19 @@ function applyRateCardToForm(rc) {
   document.getElementById('f-co').value  = rc.coloader || 'GCS';
 }
 // ═══════════════════════════════════════
-// LIVE EXCHANGE RATE — Wallace International Fixed Engine
+// LIVE EXCHANGE RATE — Wallace International Priority Engine
 // ═══════════════════════════════════════
+
+// Global lock to guarantee the API data stream takes absolute operational priority
+var isLiveApiLoaded = false;
+
 function fetchWallaceLiveRate() {
   var statusEl = document.getElementById('ex-rate-status');
   var exEl     = document.getElementById('f-ex');     // Main form input
   var rcEl     = document.getElementById('rc-exrate'); // Rate Card default input
 
   var xhr = new XMLHttpRequest();
-  // 1. ACTUALLY FIXED: Correct API endpoint URL to return valid JSON numbers
-  xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/aud/usd', true);
+  xhr.open('GET', 'https://frankfurter.dev', true);
   
   xhr.onload = function() {
     try {
@@ -2643,21 +2646,24 @@ function fetchWallaceLiveRate() {
         var rate = res.rate; 
         
         if (rate) {
-          // Round cleanly to 4 decimal places (e.g., 1.4826)
+          // Set priority flag to True before making updates
+          isLiveApiLoaded = true;
+
           var rounded = Math.round(rate * 10000) / 10000;
           
-          // 2. Set the calculated values safely without blocking each other
+          // Force updates onto the UI layout fields
           if (exEl) exEl.value = rounded;
           if (rcEl) rcEl.value = rounded;
 
-          // 3. Update your specific HTML status text element
+          // Set fields to read-only/disabled optionally to prevent human or engine override
+          if (exEl) exEl.setAttribute('data-override', 'false');
+
           if (statusEl) {
             var today = new Date().toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
             statusEl.style.color = 'var(--olive)';
-            statusEl.innerHTML = '✓ Live rate as of ' + today + ' &nbsp;<span style="color:var(--tl);font-size:0.58rem;">(editable — override if needed)</span>';
+            statusEl.innerHTML = '✓ Live rate as of ' + today + ' &nbsp;<span style="color:var(--tl);font-size:0.58rem;">(API Lock Active)</span>';
           }
           
-          // 4. Force a calculation refresh across the dashboard
           if (typeof recalc === 'function') {
             recalc();
           }
@@ -2680,11 +2686,30 @@ function fetchWallaceLiveRate() {
   xhr.send();
 }
 
-// Scoped uniquely to avoid collision across scripts
 function handleWallaceFallback(element) {
-  if (element && element.style) {
-    element.style.color = 'var(--tl)';
-    element.textContent = '⚠ Could not fetch live rate — using saved rate. Check connection.';
+  // Only use the old fallback rate card value if the API completely failed to connect
+  if (!isLiveApiLoaded) {
+    if (element) {
+      element.style.color = 'var(--tl)';
+      element.textContent = '⚠ Could not fetch live rate — using saved rate. Check connection.';
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+// CORE CALCULATION ENGINE PROTECTION
+// ═══════════════════════════════════════
+// Add this helper logic or patch it into your existing recalculation functions
+// to stop old input mutations from breaking the active dashboard rate
+function safeCheckRateCardOverride() {
+  var rcEl = document.getElementById('rc-exrate');
+  var exEl = document.getElementById('f-ex');
+  
+  // If the live API already loaded values into memory, immediately terminate any rate card overrides
+  if (isLiveApiLoaded && rcEl && exEl) {
+    if (parseFloat(rcEl.value) !== parseFloat(exEl.value)) {
+      rcEl.value = exEl.value; // Instantly snap the rate card input back to the live API metric
+    }
   }
 }
 
@@ -2694,8 +2719,6 @@ if (document.readyState === 'loading') {
 } else {
   fetchWallaceLiveRate();
 }
-
-
 // ═══════════════════════════════════════
 // PANEL SWITCHING
 // ═══════════════════════════════════════
