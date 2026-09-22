@@ -2637,7 +2637,7 @@ function fetchWallaceLiveRate() {
   var rcEl     = document.getElementById('rc-exrate'); // Rate Card default input
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', 'https://frankfurter.dev', true);
+xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/usd/aud', true);
   
   xhr.onload = function() {
     try {
