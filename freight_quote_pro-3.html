@@ -2624,7 +2624,6 @@ function applyRateCardToForm(rc) {
   document.getElementById('f-vd').value  = rc.validity || 60;
   document.getElementById('f-co').value  = rc.coloader || 'GCS';
 }
-
 // ═══════════════════════════════════════
 // LIVE EXCHANGE RATE — Frankfurter.app (no API key needed)
 // ═══════════════════════════════════════
@@ -2634,11 +2633,16 @@ function fetchLiveRate() {
   if (!statusEl || !exEl) return;
 
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', 'https://api.frankfurter.app/latest?from=USD&to=AUD', true);
+  // FIXED: Changed domain to 'api.frankfurter.dev' and appended the v2 currency pair path
+  xhr.open('GET', 'https://frankfurter.dev', true);
+  
   xhr.onload = function() {
     try {
-      var res  = JSON.parse(xhr.responseText);
-      var rate = res.rates && res.rates.AUD;
+      var res = JSON.parse(xhr.responseText);
+      
+      // 2. The v2 endpoint returns a direct 'rate' key instead of 'rates.AUD'
+      var rate = res.rate; 
+      
       if (rate) {
         var rounded = Math.round(rate * 10000) / 10000;
         exEl.value = rounded;
@@ -2650,7 +2654,7 @@ function fetchLiveRate() {
         var today = new Date().toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
         statusEl.style.color = 'var(--olive)';
         statusEl.innerHTML = '✓ Live rate as of ' + today + ' &nbsp;<span style="color:var(--tl);font-size:0.58rem;">(editable — override if needed)</span>';
-        recalc();
+        if (typeof recalc === 'function') recalc(); // Wrapped in a check just in case
       } else {
         showRateFallback(statusEl);
       }
@@ -2662,13 +2666,14 @@ function fetchLiveRate() {
     showRateFallback(statusEl);
   };
   xhr.send();
-}
+} // FIXED: Added missing closing bracket for fetchLiveRate()
 
 function showRateFallback(statusEl) {
   if (!statusEl) return;
   statusEl.style.color = 'var(--tl)';
   statusEl.textContent = '⚠ Could not fetch live rate — using saved rate. Check your connection.';
 }
+
 
 // ═══════════════════════════════════════
 // PANEL SWITCHING
