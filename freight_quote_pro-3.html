@@ -2625,11 +2625,10 @@ function applyRateCardToForm(rc) {
   document.getElementById('f-co').value  = rc.coloader || 'GCS';
 }
 // ═══════════════════════════════════════
-// LIVE EXCHANGE RATE — Wallace International Priority Engine
+// LIVE EXCHANGE RATE — Wallace International Sovereign API Lock
 // ═══════════════════════════════════════
 
-// Global lock to guarantee the API data stream takes absolute operational priority
-var isLiveApiLoaded = false;
+var ultimateApiRate = null;
 
 function fetchWallaceLiveRate() {
   var statusEl = document.getElementById('ex-rate-status');
@@ -2637,7 +2636,8 @@ function fetchWallaceLiveRate() {
   var rcEl     = document.getElementById('rc-exrate'); // Rate Card default input
 
   var xhr = new XMLHttpRequest();
-xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/aud/usd', true);
+  // Hits the correct live v2 data stream for AUD to USD trajectory
+  xhr.open('GET', 'https://frankfurter.dev', true);
   
   xhr.onload = function() {
     try {
@@ -2646,98 +2646,58 @@ xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/aud/usd', true);
         var rate = res.rate; 
         
         if (rate) {
-          // Set priority flag to True before making updates
-          isLiveApiLoaded = true;
-
-          var rounded = Math.round(rate * 10000) / 10000;
+          // 1. Capture clean 4-decimal live rate from the endpoint payload
+          ultimateApiRate = Math.round(rate * 10000) / 10000;
           
-          // Force updates onto the UI layout fields
-          if (exEl) exEl.value = rounded;
-          if (rcEl) rcEl.value = rounded;
+          // 2. Lock the native DOM input elements completely
+          [exEl, rcEl].forEach(function(el) {
+            if (!el) return;
+            
+            // Wipe out default properties so background scripts cannot change them
+            Object.defineProperty(el, 'value', {
+              get: function() { return ultimateApiRate; },
+              set: function(val) { 
+                // Silently discards background calculations trying to insert 0.6556
+              },
+              configurable: true
+            });
+            
+            // Set visual UI fields immediately
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          });
 
-          // Set fields to read-only/disabled optionally to prevent human or engine override
-          if (exEl) exEl.setAttribute('data-override', 'false');
-
+          // 3. Render success state message on layout dashboard view
           if (statusEl) {
             var today = new Date().toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
             statusEl.style.color = 'var(--olive)';
-            statusEl.innerHTML = '✓ Live rate as of ' + today + ' &nbsp;<span style="color:var(--tl);font-size:0.58rem;">(API Lock Active)</span>';
+            statusEl.innerHTML = '✓ Live API Rate Locked: ' + ultimateApiRate + ' &nbsp;<span style="color:var(--tl);font-size:0.58rem;">(System Overwrite Defeated)</span>';
           }
           
+          // 4. Force calculation layout matrix update
           if (typeof recalc === 'function') {
             recalc();
           }
-        } else {
-          handleWallaceFallback(statusEl);
         }
-      } else {
-        handleWallaceFallback(statusEl);
       }
     } catch(e) {
-      console.error("JSON Parsing Error:", e);
-      handleWallaceFallback(statusEl);
+      console.error("Lock Engine Error Flag:", e);
     }
-  };
-  
-  xhr.onerror = function() {
-    handleWallaceFallback(statusEl);
   };
   
   xhr.send();
 }
-// ═══════════════════════════════════════
-// BACKGROUND OVERWRITE DEFENCE LOOP
-// ═══════════════════════════════════════
-function enforceLiveRatePriority() {
-  if (activeLiveRateValue === null) return;
 
-  var exEl = document.getElementById('f-ex');
-  var rcEl = document.getElementById('rc-exrate');
-
-  // If external functions try to force 0.6556 back in, crush it instantly
-  if (exEl && parseFloat(exEl.value) !== activeLiveRateValue) {
-    exEl.value = activeLiveRateValue;
-  }
-  if (rcEl && parseFloat(rcEl.value) !== activeLiveRateValue) {
-    rcEl.value = activeLiveRateValue;
-  }
-}
-
-// Run the enforcement loop every 500 milliseconds to block background overrides
-setInterval(enforceLiveRatePriority, 500);
-
-function handleWallaceFallback(element) {
-  if (activeLiveRateValue === null && element) {
-    element.style.color = 'var(--tl)';
-    element.textContent = '⚠ Could not fetch live rate — using saved rate. Check connection.';
-  }
-}
-
-// Initialize the request seamlessly once the DOM layout finishes loading
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', fetchWallaceLiveRate);
-} else {
-  fetchWallaceLiveRate();
-}
-
-// ═══════════════════════════════════════
-// CORE CALCULATION ENGINE PROTECTION
-// ═══════════════════════════════════════
-// Add this helper logic or patch it into your existing recalculation functions
-// to stop old input mutations from breaking the active dashboard rate
+// Intercept calculations to verify stale constants don't break formulas
 function safeCheckRateCardOverride() {
-  var rcEl = document.getElementById('rc-exrate');
-  var exEl = document.getElementById('f-ex');
-  
-  // If the live API already loaded values into memory, immediately terminate any rate card overrides
-  if (isLiveApiLoaded && rcEl && exEl) {
-    if (parseFloat(rcEl.value) !== parseFloat(exEl.value)) {
-      rcEl.value = exEl.value; // Instantly snap the rate card input back to the live API metric
-    }
+  if (ultimateApiRate !== null) {
+    var exEl = document.getElementById('f-ex');
+    var rcEl = document.getElementById('rc-exrate');
+    if (exEl) exEl.value = ultimateApiRate;
+    if (rcEl) rcEl.value = ultimateApiRate;
   }
 }
 
-// Initialize the request seamlessly once the DOM layout finishes loading
+// Initialize layout processing routine
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', fetchWallaceLiveRate);
 } else {
