@@ -1194,7 +1194,7 @@ body {
         </div>
         <div class="field">
           <label>Exchange Rate (1 USD = AUD)</label>
-          <input type="number" id="f-ex" value="0.6556" step="0.0001">
+          <input type="number" id="f-ex" value="" step="0.0001">
           <div id="ex-rate-status" style="font-size:0.6rem;margin-top:0.25rem;color:var(--tl);">Fetching live rate...</div>
         </div>
       </div>
@@ -2047,7 +2047,8 @@ function saveQuote() {
     document.getElementById('qm-name').value = name;
   }
 
-  var ex    = parseFloat(document.getElementById('f-ex').value) || 0.6556;
+// Remove your old hardcoded fallback line and swap it to this:
+var ex = parseFloat(document.getElementById('f-ex').value) || parseFloat(document.getElementById('rc-exrate').value) || window.activeLiveRateValue || 0.7121;
   var iUSD  = sumList('cl-intl');
   var grand = (iUSD/ex) + sumList('cl-local') + sumList('cl-cust') + sumList('cl-del');
   var sp    = document.getElementById('f-salesperson').value || '';
