@@ -2685,15 +2685,39 @@ xhr.open('GET', 'https://api.frankfurter.dev/v2/rate/aud/usd', true);
   
   xhr.send();
 }
+// ═══════════════════════════════════════
+// BACKGROUND OVERWRITE DEFENCE LOOP
+// ═══════════════════════════════════════
+function enforceLiveRatePriority() {
+  if (activeLiveRateValue === null) return;
+
+  var exEl = document.getElementById('f-ex');
+  var rcEl = document.getElementById('rc-exrate');
+
+  // If external functions try to force 0.6556 back in, crush it instantly
+  if (exEl && parseFloat(exEl.value) !== activeLiveRateValue) {
+    exEl.value = activeLiveRateValue;
+  }
+  if (rcEl && parseFloat(rcEl.value) !== activeLiveRateValue) {
+    rcEl.value = activeLiveRateValue;
+  }
+}
+
+// Run the enforcement loop every 500 milliseconds to block background overrides
+setInterval(enforceLiveRatePriority, 500);
 
 function handleWallaceFallback(element) {
-  // Only use the old fallback rate card value if the API completely failed to connect
-  if (!isLiveApiLoaded) {
-    if (element) {
-      element.style.color = 'var(--tl)';
-      element.textContent = '⚠ Could not fetch live rate — using saved rate. Check connection.';
-    }
+  if (activeLiveRateValue === null && element) {
+    element.style.color = 'var(--tl)';
+    element.textContent = '⚠ Could not fetch live rate — using saved rate. Check connection.';
   }
+}
+
+// Initialize the request seamlessly once the DOM layout finishes loading
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', fetchWallaceLiveRate);
+} else {
+  fetchWallaceLiveRate();
 }
 
 // ═══════════════════════════════════════
